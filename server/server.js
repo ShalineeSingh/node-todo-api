@@ -19,14 +19,16 @@ app.post('/todos', (req, res) => {
   });
 });
 
-app.get('/todos', (doc) => {
-	res.status(200).send();
-}, (err) => {
-	res.status(400).send(err);
+app.get('/todos', (req, res) => {
+  Todo.find().then((todos) => {
+    res.status(200).send({ todos });
+  }, (err) => {
+    res.status(400).send(err);
+  });
 });
 
 app.listen(3000, () => {
   console.log('started app on 3000');
 });
 
-module.exports = {app}
+module.exports = { app }
