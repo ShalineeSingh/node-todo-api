@@ -5,6 +5,7 @@ const { ObjectID } = require('mongodb');
 const { mongoose } = require('./db/mongoose');
 const { User } = require('./models/user');
 const { Todo } = require('./models/todo');
+const port = process.env.PORT || 3000;
 
 var app = express();
 app.use(bodyParser.json());
@@ -43,10 +44,26 @@ app.get('/todos/:id', (req, res) => {
       res.status(400).send()
     })
   }
-})
+});
+app.delete('/todos/:id', (req,res) => {
+	var id = req.params.id;
+	if(!ObjectID.isValid(id)){
+		res.status(404).send();
+	}else{
+		Todo.findByIdAndRemove(id).then((todo)=> {
+			if(!todo){
+				res.status(404).send();
+			}else{
+				res.status(200).send({todo});
+			}
+		}).catch((err)=>{
+			res.status(400).send();
+		})
+	}
+});
 
-app.listen(3000, () => {
-  console.log('started app on 3000');
+app.listen(port, () => {
+  console.log(`started app on ${port}`);
 });
 
 module.exports = { app }
