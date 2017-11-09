@@ -4,21 +4,12 @@ const { ObjectID } = require('mongodb');
 
 const { app } = require('./../server');
 const { Todo } = require('./../models/todo');
+const { User } = require('./../models/user');
 
-var todos = [{
-  _id: new ObjectID(),
-  text: 'new text'
-}, {
-  _id: new ObjectID(),
-  text: 'new text 2',
-  completed: true,
-  completedAt: 222
-}];
-beforeEach((done) => {
-  Todo.remove({}).then(() => {
-    return Todo.insertMany(todos);
-  }).then(() => done());
-});
+const { todos, populateTodos, users, populateUsers } = require('./seed/seed');
+
+beforeEach(populateTodos);
+beforeEach(populateUsers);
 
 describe('POST /todos', () => {
   it('should create a new todo', (done) => {
@@ -135,7 +126,7 @@ describe('PATCH /todos/:id', () => {
         expect(res.body.todo.text).toBe('modified text');
         expect(res.body.todo.completed).toBe(true);
         expect(res.body.todo.completedAt).toBeA('number');
-        
+
       })
       .end(done);
   });
@@ -146,10 +137,77 @@ describe('PATCH /todos/:id', () => {
       .send({ text: 'modified second text', completed: false })
       .expect(200)
       .expect((res) => {
-      	expect(res.body.todo.text).toBe('modified second text')
+        expect(res.body.todo.text).toBe('modified second text')
         expect(res.body.todo.completed).toBe(false)
-         expect(res.body.todo.completedAt).toNotExist()
+        expect(res.body.todo.completedAt).toNotExist()
       })
       .end(done);
+  });
+});
+describe('GET /users/me', () => {
+  it('should return user if authenticated', (done) => {
+    request(app)
+      .get('/users/me')
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body._id).toBe(users[0]._id.toHexString())
+        expect(res.body.email).toBe(users[0].email)
+      })
+      .end(done);
+  });
+  it('should return 401 if user not authenticated', (done) => {
+    request(app)
+      .get('/users/me')
+      .expect(401)
+      .expect((res) => {
+        expect(res.body).toEqual({});
+      })
+      .end(done);
+  });
+});
+describe('POST /user', () => {
+  it('should create a user', (done) => {
+    var email = 'app@ex.com';
+    var password = 'qazwsx';
+    request(app)
+      .post('/user')
+      .send({ email, password })
+      .expect(200)
+      .expect((res) => {
+        expect(res.headers['x-auth']).toExist()
+        expect(res.body._id).toExist()
+        expect(res.body.email).toBe(email)
+      })
+      .end((err) => {
+        if (err) {
+          done(err);
+        }
+        User.findOne({ email }).then((user) => {
+          expect(user).toExist()
+          expect(user.password).toNotBe(password)
+          done();
+        })
+      });
+
+  });
+  it('should return validaiton error if request invalid', (done) => {
+    var email = 'ap@pex.com';
+    var password = 'wsx';
+    request(app)
+      .post('/user')
+      .send({ email, password })
+      .expect(400)
+      .end(done);
+  });
+  it('should not create user if email is already used', (done) => {
+    var email = 'abc@abc.com';
+    var password = 'qazwsx';
+    request(app)
+      .post('/user')
+      .send({ email, password })
+      .expect(400)
+      .end(done);
+
   });
 })

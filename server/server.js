@@ -7,6 +7,8 @@ const { ObjectID } = require('mongodb');
 const { mongoose } = require('./db/mongoose');
 const { User } = require('./models/user');
 const { Todo } = require('./models/todo');
+const {authenticate} = require('./middleware/authenticate');
+
 const port = process.env.PORT;
 
 var app = express();
@@ -90,16 +92,20 @@ app.post('/user', (req, res) => {
   var body = _.pick(req.body, ['email', 'password']);
   var user = new User(body);
   user.save().then(() => {
-  	return user.generateAuthToken();
-    // res.status(200).send({ user });
-  }).then((token) => {
-  	res.header('x-auth', token).send(user);
-  })
-  .catch((err) => {
-    res.status(400).send(err);
-  });
+      return user.generateAuthToken();
+      // res.status(200).send({ user });
+    }).then((token) => {
+      res.header('x-auth', token).send(user);
+    })
+    .catch((err) => {
+      res.status(400).send(err);
+    });
 });
 
+app.get('/users/me', authenticate, (req, res) => {
+  res.status(200).send(req.user);
+
+})
 app.listen(port, () => {
   console.log(`started app on ${port}`);
 });
